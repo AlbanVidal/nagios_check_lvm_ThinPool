@@ -1,0 +1,233 @@
+#!/bin/bash
+
+# VERSION 1.0 - 2018-01-02
+#
+# check_lvm_ThinPool - check usage of lvm ThinPool
+#
+# Copyright (C) 2018 Alban Vidal <alban.vidal@zordhak.fr>
+#
+# GNU GENERAL PUBLIC LICENSE Version 3
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+################################################################################
+##########                       Exit number list:                    ########## 
+################################################################################
+# 0 OK
+# 1 WARNING
+# 2 CRITICAL
+# 3 UNKNOWN         Unknown Invalid command line arguments - see error bellow
+
+################################################################################
+##########                   Exit error number list:                  ########## 
+################################################################################
+# 4 ()              Unknown option $1                                           
+# 5 ()              < 2 opts
+# 6 ()              WARNING $WARNING can t be upper or equal to CRITICAL $CRITICAL 
+# 7 ()              please launch with sudo
+# 8 ()              vg $vg_name does not exist
+# 9 ()              lv $lv_name does not exist or is not in vg $vg_name
+# 10()              is not a thin-pool type, type is: ...
+# 12 (check_int)     $1 opts: option is empty
+# 13 (check_int)     $1 opts: $2 is not a number
+# 14 (check_int)     $1 opts: $2 need interval between 0-100
+
+################################################################################
+##########                        DEFAULTS OPTIONS                    ##########
+################################################################################
+WARNING=80
+CRITICAL=90
+
+################################################################################
+
+_SCRIPT_NAME_=${0##*/}
+
+# Print error messages
+function error()
+{
+    exit_nb=$1
+    shift
+    # NOTE: don't redirect in stderr « >&2 » , else nrpe can't read output
+#    echo "ERROR $exit_nb: $@" >&2
+    echo "ERROR $exit_nb: $@"
+    exit 3
+}
+
+# Usage (called by -h or --help)
+function usage()
+{
+
+    echo "Usage: $_SCRIPT_NAME_ [options] vg_name lv_name"
+    echo "Options:"
+    echo "    -w,--warning <percent>     define usage warning percent (between 0-100, default: 80)"
+    echo "    -c,--critical <percent>    define usage critical percent (between 0-100, default: 100)"
+    echo "    -h,--help                  print this help"
+    echo ""
+    echo "------------------------------------------------------------------------------------------"
+    echo "    check_lvm_ThinPool Copyright (C) 2018 Alban Vidal <alban.vidal@zordhak.fr>"
+    echo "    This program comes with ABSOLUTELY NO WARRANTY"
+    echo "    This is free software, and you are welcome to redistribute it under certain conditions"
+    echo "    GNU GENERAL PUBLIC LICENSE Version 3"
+    exit 0
+}
+
+# Check number in -w and -c opts
+function check_number()
+{
+    # $1 => arg
+    # $2 => number to check
+
+    # Check if not empty
+    if [[ $2 == "" ]]
+    then
+        error 12 $1 opts: option is empty - require a number
+    fi
+
+    # Check if is number
+    if ! [[ $2 =~ ^[0-9]+$ ]] # OK
+    then
+        error 13 $1 opts: $2 is not a number
+    fi
+
+    # Check if > 0 and < 100
+    if ! [ "$2" -ge 0 -a "$2" -le 100 ]
+    then
+        error 14 $1 opts: $2 need interval between 0-100
+    fi
+}
+
+# Check args
+opt="$1"
+while test ! -z "$opt" -a -z "${opt##-*}"
+do
+
+    case "$opt" in
+        "-h"|"--help")
+            usage
+            ;;
+        "-w"|"--warning")
+            check_number warning $2 
+            WARNING=$2
+            shift
+            ;;
+        "-c"|"--critical")
+            check_number critical $2
+            CRITICAL=$2
+            shift
+            ;;
+        *)
+            error 4 Unknown option: $1
+            ;;
+    esac
+
+    shift
+    opt="$1"
+done
+
+# TEST if WARN > to CRIT => ERR
+if [ $WARNING -ge $CRITICAL ] ;then
+    error 6 WARNING \($WARNING\) can\'t be upper or equal to CRITICAL \($CRITICAL\)
+fi
+
+# Test if remaining arg is two: <vg> and <lv>
+if [ ! $# -eq 2 ]
+then
+    error 5 vg_name and lv_name is required, to usage see: $_SCRIPT_NAME_ --help
+fi
+
+# Check if we are root right
+if [ $(id -u) -ne 0 ];then
+    error 7 please launch with sudo
+fi
+
+vg_name="$1"
+lv_name="$2"
+
+# Check if <vg> exist
+if ! vgs $vg_name > /dev/null 2>&1 ; then
+    error 8 vg $vg_name does not exist
+fi
+
+# Check if <lv> exist ans if is an thin lv pool
+#if ! lv_result=$(lvs ${vg_name}/${lv_name}) 2>/dev/null ; then
+if ! lv_result=$(lvs --noheading --separator "__" --options vg_name,lv_name,attr,segtype,data_percent,snap_percent,metadata_percent ${vg_name}/${lv_name} 2>/dev/null ) ; then
+    error 9 lv $lv_name does not exist or is not in vg $vg_name
+fi
+
+# end of tests
+################################################################################
+# NOTE:
+# 1 = vg_name               vg_foo
+# 2 = lv_name               lv_bar
+# 3 = attr                  -wi-a-----
+# 4 = segtype               linear=error / thin-pool=OK
+# 5 = data_percent          xx,xx
+# 6 = snap_percent          yy,yy
+# 7 = metadata_percent      zz,zz
+
+# Test if is thinpool
+# if is not thinPool type, we return current type
+test_thinpool=$(echo $lv_result| \
+awk -F __ \
+    '{ if ($4 == "thin-pool")  print "OK"; else print $1 "/" $2 "is not a thin-pool type, type is: " $4 }')
+if ! echo $test_thinpool|grep -q ^OK$ ; then
+    error 10 $test_thinpool
+fi
+
+# number of warning and critical error
+number_WARN=0
+number_CRIT=0
+
+function check_percent()
+{
+    # $1 = percent
+    local percent=$1
+    # remove , or .
+    percent=${percent%%,*}
+    percent=${percent%%.*}
+    if [ $percent -gt $CRITICAL ] ; then
+        (( number_CRIT ++ ))
+    elif [ $percent -gt $WARNING ] ; then
+        (( number_WARN ++ ))
+    fi
+}
+
+# data_percent
+data_percent=$(echo $lv_result| awk -F __ '{print $5}')
+check_percent $data_percent
+
+# snap_percent
+snap_percent=$(echo $lv_result| awk -F __ '{print $6}')
+check_percent $snap_percent
+
+# metadata_percent
+metadata_percent=$(echo $lv_result| awk -F __ '{print $7}')
+check_percent $metadata_percent
+
+output="- ThinPool ${vg_name}/${lv_name}: data=${data_percent}% snap=${snap_percent}% meta=${metadata_percent}%"
+
+if [ $number_CRIT -gt 0 ] ; then
+    echo "CRITICAL: $output"
+    exit 2
+fi
+
+if [ $number_WARN -gt 0 ] ; then
+    echo "WARNING: $output"
+    exit 1
+fi
+
+echo "OK $output"
+exit 0
+
+################################################################################
