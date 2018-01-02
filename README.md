@@ -13,16 +13,16 @@ Options:
 ```
 
 # Example to add this in nrpe
- + Copie this script in /usr/lib/nagios/plugins directory
- + Add in sudoers :
+ + Copie this script in `/usr/lib/nagios/plugins` directory
+ + Add nagios in sudoers to execute this script:
 ``` shell
 nagios  ALL=(ALL) NOPASSWD:/usr/lib/nagios/plugins/check_lvm_ThinPool
 ```
- + Create file /etc/nagios/nrpe.d/check_lvm_ThinPool.cfg :
+ + Create file `/etc/nagios/nrpe.d/check_lvm_ThinPool.cfg` with this content:
 ``` shell
-command[check_lvm_ThinPool]=sudo /usr/lib/nagios/plugins/check_lvm_ThinPool vg_name lv_ThinPoolName
+command[check_lvm_ThinPool]=sudo /usr/lib/nagios/plugins/check_lvm_ThinPool <vg_name> <lv_ThinPoolName>
 ```
- + Reload NRPE
+ + Reload NRPE service
 ``` shell
 systemctl reload nagios-nrpe-server.service
 ```
