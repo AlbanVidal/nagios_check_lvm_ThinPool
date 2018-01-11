@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# VERSION 1.0 - 2018-01-02
+# VERSION 1.1 - 2018-01-11
 #
 # check_lvm_ThinPool - check usage of lvm ThinPool
 #
@@ -70,15 +70,35 @@ function usage()
 
     echo "Usage: $_SCRIPT_NAME_ [options] vg_name lv_name"
     echo "Options:"
-    echo "    -w,--warning <percent>     define usage warning percent (between 0-100, default: 80)"
-    echo "    -c,--critical <percent>    define usage critical percent (between 0-100, default: 100)"
-    echo "    -h,--help                  print this help"
+    echo "    -w, --warning  <percent>    define usage warning percent (between 0-100, default: 80)"
+    echo "    -c, --critical <percent>    define usage critical percent (between 0-100, default: 100)"
+    echo "    -e, --examples              show usage examples"
+    echo "    -h, --help                  print this help"
     echo ""
     echo "------------------------------------------------------------------------------------------"
     echo "    check_lvm_ThinPool Copyright (C) 2018 Alban Vidal <alban.vidal@zordhak.fr>"
     echo "    This program comes with ABSOLUTELY NO WARRANTY"
     echo "    This is free software, and you are welcome to redistribute it under certain conditions"
     echo "    GNU GENERAL PUBLIC LICENSE Version 3"
+    exit 0
+}
+
+function examples()
+{
+    yellow="$(tput setaf 3)"
+    green="$(tput setaf 2)"
+    reset="$(tput sgr0)"
+    echo "${yellow}Usage examples:${reset}"
+    echo ""
+    echo "${green}Simple check${reset}"
+    echo "${yellow}check_lvm_ThinPool vg_srv-1 LXDThinpool${reset}"
+    echo "    OK - ThinPool vg_srv-1/LXDThinpool: data=63,40% snap=63,40% meta=32,76%"
+    echo ""
+    echo "${green}Change range Waning and Critical:${reset}"
+    echo "${yellow}check_lvm_ThinPool -w 50 -c 60 vg_srv-1 LXDThinpool${reset}"
+    echo "    CRITICAL - ThinPool vg_srv-1/LXDThinpool: data=63,41% snap=63,41% meta=32,76%"
+    echo ""
+
     exit 0
 }
 
@@ -115,6 +135,9 @@ do
     case "$opt" in
         "-h"|"--help")
             usage
+            ;;
+        "-e"|"--examples")
+            examples
             ;;
         "-w"|"--warning")
             check_number warning $2 
@@ -218,12 +241,12 @@ check_percent $metadata_percent
 output="- ThinPool ${vg_name}/${lv_name}: data=${data_percent}% snap=${snap_percent}% meta=${metadata_percent}%"
 
 if [ $number_CRIT -gt 0 ] ; then
-    echo "CRITICAL: $output"
+    echo "CRITICAL $output"
     exit 2
 fi
 
 if [ $number_WARN -gt 0 ] ; then
-    echo "WARNING: $output"
+    echo "WARNING $output"
     exit 1
 fi
 
