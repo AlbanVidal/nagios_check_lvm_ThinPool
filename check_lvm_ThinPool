@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# VERSION 1.1 - 2018-01-11
+# VERSION 1.2 - 2018-01-25
 #
 # check_lvm_ThinPool - check usage of lvm ThinPool
 #
@@ -39,15 +39,17 @@
 # 8 ()              vg $vg_name does not exist
 # 9 ()              lv $lv_name does not exist or is not in vg $vg_name
 # 10()              is not a thin-pool type, type is: ...
-# 12 (check_int)     $1 opts: option is empty
-# 13 (check_int)     $1 opts: $2 is not a number
-# 14 (check_int)     $1 opts: $2 need interval between 0-100
+# 12 (check_int)    $1 opts: option is empty
+# 13 (check_int)    $1 opts: $2 is not a number
+# 14 (check_int)    $1 opts: $2 need interval between 0-100
+# 16                binary not known
 
 ################################################################################
 ##########                        DEFAULTS OPTIONS                    ##########
 ################################################################################
 WARNING=80
 CRITICAL=90
+PERF_DATA=false
 
 ################################################################################
 
@@ -70,10 +72,11 @@ function usage()
 
     echo "Usage: $_SCRIPT_NAME_ [options] vg_name lv_name"
     echo "Options:"
-    echo "    -w, --warning  <percent>    define usage warning percent (between 0-100, default: 80)"
-    echo "    -c, --critical <percent>    define usage critical percent (between 0-100, default: 100)"
-    echo "    -e, --examples              show usage examples"
-    echo "    -h, --help                  print this help"
+    echo "    -w, --warning  <percent>    Define usage warning percent (between 0-100, default: 80)"
+    echo "    -c, --critical <percent>    Define usage critical percent (between 0-100, default: 100)"
+    echo "    -p, --perf-data             Enable performance data output"
+    echo "    -e, --examples              Show usage examples"
+    echo "    -h, --help                  Print this help"
     echo ""
     echo "------------------------------------------------------------------------------------------"
     echo "    check_lvm_ThinPool Copyright (C) 2018 Alban Vidal <alban.vidal@zordhak.fr>"
@@ -100,6 +103,15 @@ function examples()
     echo ""
 
     exit 0
+}
+
+function check_binary()
+{
+    # $1 => binary to check
+    # $2 => package containing the binary
+    if ! which $1 > /dev/null 2>&1 ;then
+        error 16 $1: binary not known. Please install $2 package or check your '$PATH'
+    fi
 }
 
 # Check number in -w and -c opts
@@ -149,6 +161,9 @@ do
             CRITICAL=$2
             shift
             ;;
+        "-p"|"--perf-data")
+            PERF_DATA=true # Enable performance data output
+            ;;
         *)
             error 4 Unknown option: $1
             ;;
@@ -162,6 +177,10 @@ done
 if [ $WARNING -ge $CRITICAL ] ;then
     error 6 WARNING \($WARNING\) can\'t be upper or equal to CRITICAL \($CRITICAL\)
 fi
+
+# Check binary
+check_binary lvs lvm2
+check_binary awk gawk
 
 # Test if remaining arg is two: <vg> and <lv>
 if [ ! $# -eq 2 ]
@@ -238,7 +257,7 @@ check_percent $snap_percent
 metadata_percent=$(echo $lv_result| awk -F __ '{print $7}')
 check_percent $metadata_percent
 
-output="- ThinPool ${vg_name}/${lv_name}: data=${data_percent}% snap=${snap_percent}% meta=${metadata_percent}%"
+output="- ThinPool ${vg_name}/${lv_name} data=${data_percent}% snap=${snap_percent}% meta=${metadata_percent}%"
 
 if [ $number_CRIT -gt 0 ] ; then
     echo "CRITICAL $output"
@@ -251,6 +270,10 @@ if [ $number_WARN -gt 0 ] ; then
 fi
 
 echo "OK $output"
+if $PERF_DATA ; then
+    echo " | ${vg_name}/${lv_name}_data=${data_percent}% ${vg_name}/${lv_name}_snap=${snap_percent}% ${vg_name}/${lv_name}_meta=${metadata_percent}%"
+fi
+
 exit 0
 
 ################################################################################

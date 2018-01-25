@@ -13,10 +13,11 @@ apt install lvm2 gawk
 ``` shell
 check_lvm_ThinPool [options] vg_name lv_name
 Options:
-    -w, --warning  <percent>    define usage warning percent (between 0-100, default: 80)
-    -c, --critical <percent>    define usage critical percent (between 0-100, default: 100)
-    -e, --examples              show usage examples
-    -h, --help                  print this help
+    -w, --warning  <percent>    Define usage warning percent (between 0-100, default: 80)
+    -c, --critical <percent>    Define usage critical percent (between 0-100, default: 100)
+    -p, --perf-data             Enable performance data output
+    -e, --examples              Show usage examples
+    -h, --help                  Print this help
 ```
 
 # Usage examples
