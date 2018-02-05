@@ -259,21 +259,23 @@ check_percent $metadata_percent
 
 output="- ThinPool ${vg_name}/${lv_name} data=${data_percent}% snap=${snap_percent}% meta=${metadata_percent}%"
 
-if [ $number_CRIT -gt 0 ] ; then
-    echo "CRITICAL $output"
-    exit 2
+if [ $number_CRIT -gt 0 ] ; then   # CRITICAL
+    output_prefix="CRITICAL"
+    exit_code=2
+elif [ $number_WARN -gt 0 ] ; then # WARNING
+    output_prefix="WARNING"
+    exit_code=1
+else                               # OK
+    output_prefix="OK"
+    exit_code=0
 fi
 
-if [ $number_WARN -gt 0 ] ; then
-    echo "WARNING $output"
-    exit 1
-fi
-
-echo "OK $output"
+# Print output :
+echo "$output_prefix $output"
 if $PERF_DATA ; then
     echo " | ${vg_name}/${lv_name}_data=${data_percent}% ${vg_name}/${lv_name}_snap=${snap_percent}% ${vg_name}/${lv_name}_meta=${metadata_percent}%"
 fi
 
-exit 0
+exit $exit_code
 
 ################################################################################
