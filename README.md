@@ -66,3 +66,49 @@ You can add the path of this script in your crontab file or in systemd timers to
 
 Tested in the following environments:
  + [x] Debian 9 + Mate
+
+## GUI mode, timer with Systemd
+
++ Step 1, create a oneshot service
+
+```shell
+cat << EOF > /etc/systemd/system/check-lvm-thinpool.service
+[Unit]
+Description=Check LVM ThinPool
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/check_lvm_ThinPool -g alban vg_port lv_ThinPool
+EOF
+```
+
++ Step 2, create a timer for the service
+
+```shell
+cat << EOF > /etc/systemd/system/check-lvm-thinpool.timer
+[Unit]
+Description=Timer for Check LVM ThinPool
+
+[Timer]
+# Time between running each consecutive time
+OnUnitActiveSec=1m
+
+[Install]
+WantedBy=timers.target
+EOF
+```
+
++ Reload daemon, enable and start the timer
+
+```shell
+systemctl daemon-reload
+systemctl enable --now check-lvm-thinpool.timer
+systemctl start check-lvm-thinpool.service
+```
+
++ You can check timer status, and timers
+
+```shell
+systemctl status check-lvm-thinpool.timer
+systemctl list-timers
+```
