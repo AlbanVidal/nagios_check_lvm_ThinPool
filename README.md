@@ -4,9 +4,17 @@ nagios check lvm ThinPool
 check usage of lvm ThinPool
 
 # Dependances
+
+## For CLI (nagios) mode
 `lvs` and `awk` binarys are required, to install on Debian/Ubuntu system:
 ``` shell
 apt install lvm2 gawk
+```
+
+## For GUI mode
+In GUI mode, your also need notify-send binary, provides from libnotify-bin package
+``` shell
+apt install libnotify-bin
 ```
 
 # Usage
@@ -16,6 +24,7 @@ Options:
     -w, --warning  <percent>    Define usage warning percent (between 0-100, default: 80)
     -c, --critical <percent>    Define usage critical percent (between 0-100, default: 100)
     -p, --perf-data             Enable performance data output
+    -g, --gui-notify <user>     Enable GUI notification mode for Desktop usage
     -e, --examples              Show usage examples
     -h, --help                  Print this help
 ```
@@ -28,7 +37,13 @@ check_lvm_ThinPool vg_srv-1 LXDThinpool
 
 # Change range Waning and Critical:
 check_lvm_ThinPool -w 50 -c 60 vg_srv-1 LXDThinpool
-CRITICAL - ThinPool vg_srv-1/LXDThinpool: data=63,41% snap=63,41% meta=32,76%
+    CRITICAL - ThinPool vg_srv-1/LXDThinpool: data=63,41% snap=63,41% meta=32,76%
+
+Desktop usage (GUI notification):
+check_lvm_ThinPool --gui-notify alban vg_port lv_ThinPool
+    (No CLI output, just in notification area)
+    LVM ThinPool Alert
+    ThinPool vg_port/lv_ThinPool data=61,03% snap=61,03% meta=20,11%
 ```
 
 # Example to add this in nrpe
@@ -45,3 +60,9 @@ command[check_lvm_ThinPool]=sudo /usr/lib/nagios/plugins/check_lvm_ThinPool <vg_
 ``` shell
 systemctl reload nagios-nrpe-server.service
 ```
+
+# Desktop mode (GUI notification)
+You can add the path of this script in your crontab file or in systemd timers to receive notification in your desktop environment.
+
+Tested in the following environments
+ + [x] Debian 9 + Mate
