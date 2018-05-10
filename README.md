@@ -64,5 +64,5 @@ systemctl reload nagios-nrpe-server.service
 # Desktop mode (GUI notification)
 You can add the path of this script in your crontab file or in systemd timers to receive notification in your desktop environment.
 
-Tested in the following environments
+Tested in the following environments:
  + [x] Debian 9 + Mate

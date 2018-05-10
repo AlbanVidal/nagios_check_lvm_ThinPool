@@ -310,6 +310,8 @@ else
         EXPIRE_TIME=60000 # 60 seconds
         notify-send --icon=drive-multidisk --urgency=critical --expire-time=$EXPIRE_TIME "LVM ThinPool Alert" "$output_prefix $output"
     fi
+    # In GUI mode, wee need to exit code is equal to 0 if systemd is used
+    exit 0
 fi
 
 exit $exit_code
