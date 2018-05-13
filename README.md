@@ -40,7 +40,8 @@ check_lvm_ThinPool -w 50 -c 60 vg_srv-1 LXDThinpool
     CRITICAL - ThinPool vg_srv-1/LXDThinpool: data=63,41% snap=63,41% meta=32,76%
 
 Desktop usage (GUI notification):
-check_lvm_ThinPool --gui-notify alban vg_port lv_ThinPool
+(change <user> by the graphical user)
+check_lvm_ThinPool --gui-notify <user> vg_port lv_ThinPool
     (No CLI output, just in notification area)
     LVM ThinPool Alert
     ThinPool vg_port/lv_ThinPool data=61,03% snap=61,03% meta=20,11%
@@ -69,7 +70,7 @@ Tested in the following environments:
 
 ## GUI mode, timer with Systemd
 
-+ Step 1, create a oneshot service
++ Step 1, create a oneshot service (change `<user>` by the graphical user)
 
 ```shell
 cat << EOF > /etc/systemd/system/check-lvm-thinpool.service
@@ -78,7 +79,7 @@ Description=Check LVM ThinPool
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/check_lvm_ThinPool -g alban vg_port lv_ThinPool
+ExecStart=/usr/local/bin/check_lvm_ThinPool -g <user> vg_port lv_ThinPool
 EOF
 ```
 
